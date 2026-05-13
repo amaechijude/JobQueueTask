@@ -47,6 +47,12 @@ public sealed class Job
 
     public void MarkPending() => TransitionJobStatus(JobStatus.Pending);
 
+    public void Cancel()
+    {
+        TransitionJobStatus(JobStatus.Failed);
+        ErrorMessage = "cancelled";
+    }
+
     public void IncrementRetryCount() => RetryCount++;
 
     private void TransitionJobStatus(JobStatus newStatus)
