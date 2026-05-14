@@ -362,3 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 dotnet_intermediate_assessment_v2.md
+JobQueueTask.Api/Sqlite/app.db
+JobQueueTask.Api/Sqlite/app.db-shm
+JobQueueTask.Api/Sqlite/app.db-wal

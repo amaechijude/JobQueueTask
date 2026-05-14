@@ -7,7 +7,7 @@ namespace JobQueueTask.Api.Controllers;
 [Route("jobs")]
 public sealed class JobsController(IJobService jobService) : ControllerBase
 {
-    [HttpPost("/")]
+    [HttpPost]
     public async Task<IActionResult> CreateJob(
         [FromBody] CreateJobRequest request,
         CancellationToken cancellationToken
@@ -24,7 +24,7 @@ public sealed class JobsController(IJobService jobService) : ControllerBase
         return response.IsSuccess ? Ok(response.Data) : BadRequest(response.Error);
     }
 
-    [HttpGet("/")]
+    [HttpGet]
     public async Task<IActionResult> ListJobs(
         [FromQuery] ListJobsRequest request,
         CancellationToken cancellationToken
@@ -44,7 +44,7 @@ public sealed class JobsController(IJobService jobService) : ControllerBase
         return response.IsSuccess ? Ok(response.Data) : BadRequest(response.Error);
     }
 
-    [HttpPost("/stats")]
+    [HttpGet("stats")]
     public async Task<IActionResult> ListJobstats(CancellationToken cancellationToken)
     {
         var response = await jobService.ListJobStatisticsAsync(cancellationToken);
