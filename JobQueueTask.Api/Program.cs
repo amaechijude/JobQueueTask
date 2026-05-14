@@ -19,9 +19,16 @@ builder.Services.AddDbContext<JobDbContext>(options =>
 var redis = builder.Configuration.GetConnectionString("Redis") ?? string.Empty;
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redis));
 
-builder.Services.AddSingleton<IJobHandler, JobHandler>();
 builder.Services.AddSingleton<IJobQueue, RedisJobQueue>();
 builder.Services.AddScoped<IJobService, JobService>();
+
+// handlers
+builder.Services.AddKeyedSingleton<IJobHandler, ExportCsvHandler>("export_csv");
+builder.Services.AddKeyedSingleton<IJobHandler, SendReportHandler>("send_report");
+
+builder.Services.AddHostedService<JobProcessingWorker>();
+
+//
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
