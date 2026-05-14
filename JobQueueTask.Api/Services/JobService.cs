@@ -1,4 +1,5 @@
 using JobQueueTask.Api.Entities;
+using JobQueueTask.Api.JobHandler;
 using JobQueueTask.Api.Redis;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -107,16 +108,19 @@ public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger
         return ApiResponse<GetJobResponse>.Success(job);
     }
 
-    public async Task CancelJobAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<ApiResponse<CancelJobResponse>> CancelJobAsync(
+        Guid id,
+        CancellationToken cancellationToken
+    )
     {
         var job = await context.Jobs.FindAsync([id], cancellationToken);
         if (job is null)
-            return;
+            return ApiResponse<CancelJobResponse>.Success(new CancelJobResponse());
 
         job.Cancel();
         await context.SaveChangesAsync(cancellationToken);
 
-        return;
+        return ApiResponse<CancelJobResponse>.Success(new CancelJobResponse());
     }
 
     public async Task<ApiResponse<ListJobStatistics>> ListJobStatisticsAsync(CancellationToken ct)

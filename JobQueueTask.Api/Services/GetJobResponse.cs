@@ -6,6 +6,8 @@ public sealed record ListJobsRequest(JobStatus? Status, int PageNumber = 1, int 
 
 public sealed record ListJobsResponse(IEnumerable<GetJobResponse> Jobs, bool HasNext);
 
+public sealed record CancelJobResponse(string Status = "Cancelled");
+
 public sealed record ListJobStatistics(IEnumerable<Stat> Stats);
 
 public sealed record Stat(string Type, int Count);

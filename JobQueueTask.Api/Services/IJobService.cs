@@ -2,7 +2,10 @@ namespace JobQueueTask.Api.Services;
 
 public interface IJobService
 {
-    Task CancelJobAsync(Guid id, CancellationToken cancellationToken);
+    Task<ApiResponse<CancelJobResponse>> CancelJobAsync(
+        Guid id,
+        CancellationToken cancellationToken
+    );
     Task<ApiResponse<string>> CreateJobAsync(
         CreateJobRequest request,
         CancellationToken cancellationToken
