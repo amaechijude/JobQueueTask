@@ -16,7 +16,7 @@ public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger
     {
         var payload = PayloadSerializer.Serialize(request.Payload);
         var newJob = Job.Create(
-            type: request.Type,
+            type: request.Type.ToString(),
             maxRetries: request.MaxRetries,
             payload: payload
         );

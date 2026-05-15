@@ -1,4 +1,5 @@
 using JobQueueTask.Api.Entities;
+using JobQueueTask.Api.Redis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -42,28 +43,38 @@ public sealed class OrphanRecovery(
     {
         using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<JobDbContext>();
+        var jobQueue = scope.ServiceProvider.GetRequiredService<IJobQueue>();
 
+        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-options.Value.OrphanTimeoutMinutes);
 
-        List<Guid> jobIds = await dbContext
-            .Jobs.AsNoTracking()
-            .Where(j => j.Status == JobStatus.Running)
+        var orphanedJobs = await dbContext
+            .Jobs.Where(e =>
+                (e.StartedAt ?? DateTimeOffset.MinValue) < cutoff && e.Status == JobStatus.Running
+            )
             .TagWithCallSite()
             .OrderBy(j => j.Id)
             .Take(50)
-            .Select(j => j.Id)
             .ToListAsync(cancellationToken);
 
-        if (jobIds.Count > 0)
+        var count = orphanedJobs.Count;
+
+        if (count == 0)
             return;
 
-        await dbContext
-            .Jobs.Where(j => jobIds.Contains(j.Id))
-            .ExecuteUpdateAsync(
-                setters =>
-                {
-                    setters.SetProperty(j => j.Status, JobStatus.Failed);
-                },
-                cancellationToken
-            );
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation("Found {Count} orphaned jobs to recover.", orphanedJobs.Count);
+
+        HashSet<Guid> IdsToEnque = new(count);
+
+        foreach (var job in orphanedJobs)
+        {
+            job.ResolveAsOrphan();
+
+            if (job.Status == JobStatus.Pending)
+                IdsToEnque.Add(job.Id);
+        }
+        await jobQueue.EnqueueAsync(IdsToEnque, cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

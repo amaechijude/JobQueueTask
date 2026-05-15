@@ -13,6 +13,13 @@ public sealed class RedisJobQueue(IConnectionMultiplexer connectionMultiplexer) 
         await _redisdb.ListRightPushAsync(QueueKey, jobId.ToString());
     }
 
+    public async Task EnqueueAsync(IEnumerable<Guid> jobIds, CancellationToken cancellationToken)
+    {
+        RedisValue[] redisValues = [.. jobIds.Select(j => new RedisValue(j.ToString()))];
+
+        await _redisdb.ListRightPushAsync(QueueKey, redisValues);
+    }
+
     public async Task<Guid?> DequeueAsync(CancellationToken cancellationToken)
     {
         var result = await _redisdb.ListLeftPopAsync(QueueKey);

@@ -63,17 +63,7 @@ public sealed class JobProcessingWorker(
         }
 
         // transition job to running
-        await dbContext
-            .Jobs.Where(j => j.Id == jobId)
-            .TagWithCallSite()
-            .ExecuteUpdateAsync(
-                setters =>
-                {
-                    setters.SetProperty(j => j.Status, JobStatus.Running);
-                    setters.SetProperty(j => j.StartedAt, DateTimeOffset.UtcNow);
-                },
-                ct
-            );
+        job.StartRunning();
 
         try
         {
@@ -84,9 +74,15 @@ public sealed class JobProcessingWorker(
             var result = await handler.ExecuteAsync(job.Payload, ct);
 
             // 5. Update Job status
-            await ResolveJobProcessignResult(job, result, ct);
-
-            await dbContext.SaveChangesAsync(ct);
+            if (string.IsNullOrWhiteSpace(result)) // fail
+            {
+                job.RequeueAsPending();
+                await jobQueue.EnqueueAsync(job.Id, ct);
+            }
+            else
+            {
+                job.Complete(result);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -95,26 +91,21 @@ public sealed class JobProcessingWorker(
                     "Job processing was cancelled for Job {JobId} due to shutdown.",
                     jobId
                 );
-            throw; // Rethrow to let the outer loop handle graceful shutdown
+            throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Execution failed for Job {JobId}.", jobId);
-
-            // Handle failure: Update job status to Failed, increment RetryCount, or requeue
-            // await dbContext.SaveChangesAsync(ct);
+            logger.LogError(
+                "An error ocuured while processing job with id {id}. {message}",
+                job.Id,
+                ex.Message
+            );
+            job.RequeueAsPending();
+            await jobQueue.EnqueueAsync(job.Id, ct);
         }
-    }
-
-    private async Task ResolveJobProcessignResult(Job job, string result, CancellationToken ct)
-    {
-        if (!string.IsNullOrWhiteSpace(result))
+        finally
         {
-            job.Complete(result);
-            return;
+            await dbContext.SaveChangesAsync(ct);
         }
-
-        job.RequeueAsPending();
-        await jobQueue.EnqueueAsync(job.Id, ct);
     }
 }

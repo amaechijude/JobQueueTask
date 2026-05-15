@@ -11,9 +11,11 @@ public sealed class Job
     public DateTimeOffset CreatedAt { get; private init; }
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
+
+    public uint RowVersion { get; private set; }
     public int RetryCount { get; private set; } = 0;
     public int MaxRetries { get; private init; } = 3;
-    public bool CanRetry => RetryCount <= MaxRetries;
+    public bool CanRetry => RetryCount < MaxRetries;
 
     public static Job Create(string type, int maxRetries, string payload) =>
         new()
@@ -38,7 +40,7 @@ public sealed class Job
         CompletedAt = DateTimeOffset.UtcNow;
     }
 
-    public void MarkFailed(string message)
+    private void MarkFailed(string message)
     {
         TransitionJobStatus(JobStatus.Failed);
         ErrorMessage = message;
@@ -60,6 +62,14 @@ public sealed class Job
     {
         TransitionJobStatus(JobStatus.Failed);
         ErrorMessage = "cancelled";
+    }
+
+    public void ResolveAsOrphan()
+    {
+        TransitionJobStatus(JobStatus.Failed);
+        ErrorMessage = "orphaned";
+
+        RequeueAsPending();
     }
 
     private void IncrementRetryCount() => RetryCount++;

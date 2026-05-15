@@ -21,6 +21,9 @@ public sealed class JobDbContext(DbContextOptions<JobDbContext> options) : DbCon
             job.Property(j => j.ErrorMessage).HasMaxLength(256);
 
             job.Property(j => j.Status).HasConversion<string>();
+
+            // Row version
+            job.Property(x => x.RowVersion).IsRowVersion();
         });
     }
 }
