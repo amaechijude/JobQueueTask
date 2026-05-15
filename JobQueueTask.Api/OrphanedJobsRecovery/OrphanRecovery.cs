@@ -2,7 +2,7 @@ using JobQueueTask.Api.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace JobQueue.Api.BackgroundWorkers;
+namespace JobQueueTask.Api.OrphanedJobsRecovery;
 
 public sealed class OrphanRecovery(
     IOptions<JobQueueOptions> options,
@@ -30,6 +30,12 @@ public sealed class OrphanRecovery(
         {
             logger.LogInformation("Orphan recovery is shutting dowm");
         }
+        catch (Exception ex)
+        {
+            logger.LogError("Exception occured in Orphan recovery loop {message}", ex.Message);
+
+            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        }
     }
 
     private async Task ProcessOrphanedJobsAsync(CancellationToken cancellationToken)
@@ -37,16 +43,11 @@ public sealed class OrphanRecovery(
         using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<JobDbContext>();
 
-        DateTimeOffset orphanedThreshold = DateTimeOffset.UtcNow.AddMinutes(-5);
 
         List<Guid> jobIds = await dbContext
             .Jobs.AsNoTracking()
-            .Where(j =>
-                j.Status == JobStatus.Running
-                && j.StartedAt != null
-                && j.StartedAt <= orphanedThreshold
-                && j.RetryCount <= j.MaxRetries
-            )
+            .Where(j => j.Status == JobStatus.Running)
+            .TagWithCallSite()
             .OrderBy(j => j.Id)
             .Take(50)
             .Select(j => j.Id)

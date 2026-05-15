@@ -1,5 +1,6 @@
 using JobQueueTask.Api.Entities;
 using JobQueueTask.Api.Redis;
+using Microsoft.EntityFrameworkCore;
 
 namespace JobQueueTask.Api.JobHandler;
 
@@ -60,6 +61,19 @@ public sealed class JobProcessingWorker(
             logger.LogWarning("job already running or completed.");
             return;
         }
+
+        // transition job to running
+        await dbContext
+            .Jobs.Where(j => j.Id == jobId)
+            .TagWithCallSite()
+            .ExecuteUpdateAsync(
+                setters =>
+                {
+                    setters.SetProperty(j => j.Status, JobStatus.Running);
+                    setters.SetProperty(j => j.StartedAt, DateTimeOffset.UtcNow);
+                },
+                ct
+            );
 
         try
         {

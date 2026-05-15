@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace JobQueue.Api;
+namespace JobQueueTask.Api.OrphanedJobsRecovery;
 
 public sealed class JobQueueOptions
 {

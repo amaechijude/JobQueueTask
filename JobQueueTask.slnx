@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="JobQueueTask.Api/JobQueueTask.Api.csproj" />
+  <Project Path="JobQueueTask.Test/JobQueueTask.Test.csproj" />
 </Solution>

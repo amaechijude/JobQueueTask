@@ -1,7 +1,6 @@
-using JobQueue.Api;
-using JobQueue.Api.BackgroundWorkers;
 using JobQueueTask.Api.Entities;
 using JobQueueTask.Api.JobHandler;
+using JobQueueTask.Api.OrphanedJobsRecovery;
 using JobQueueTask.Api.Redis;
 using JobQueueTask.Api.Services;
 using Microsoft.EntityFrameworkCore;
