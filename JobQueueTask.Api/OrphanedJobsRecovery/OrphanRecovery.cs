@@ -68,7 +68,7 @@ public sealed class OrphanRecovery(
 
         foreach (var job in orphanedJobs)
         {
-            job.ResolveAsOrphan();
+            job.ResolveFailedJob();
 
             if (job.Status == JobStatus.Pending)
                 IdsToEnque.Add(job.Id);

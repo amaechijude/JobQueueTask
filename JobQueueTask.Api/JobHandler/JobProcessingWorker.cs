@@ -76,7 +76,7 @@ public sealed class JobProcessingWorker(
             // 5. Update Job status
             if (string.IsNullOrWhiteSpace(result)) // fail
             {
-                job.RequeueAsPending();
+                job.ResolveFailedJob();
                 await jobQueue.EnqueueAsync(job.Id, ct);
             }
             else
@@ -100,7 +100,7 @@ public sealed class JobProcessingWorker(
                 job.Id,
                 ex.Message
             );
-            job.RequeueAsPending();
+            job.ResolveFailedJob();
             await jobQueue.EnqueueAsync(job.Id, ct);
         }
         finally

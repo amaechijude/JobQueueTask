@@ -47,29 +47,21 @@ public sealed class Job
         CompletedAt = DateTimeOffset.UtcNow;
     }
 
-    public void RequeueAsPending()
-    {
-        if (!CanRetry)
-        {
-            MarkFailed("No more retries");
-            return;
-        }
-        IncrementRetryCount();
-        TransitionJobStatus(JobStatus.Pending);
-    }
-
     public void Cancel()
     {
         TransitionJobStatus(JobStatus.Failed);
         ErrorMessage = "cancelled";
     }
 
-    public void ResolveAsOrphan()
+    public void ResolveFailedJob()
     {
-        TransitionJobStatus(JobStatus.Failed);
-        ErrorMessage = "orphaned";
-
-        RequeueAsPending();
+        if (!CanRetry)
+        {
+            MarkFailed("Max retries reached.");
+            return;
+        }
+        IncrementRetryCount();
+        TransitionJobStatus(JobStatus.Pending);
     }
 
     private void IncrementRetryCount() => RetryCount++;
@@ -81,6 +73,7 @@ public sealed class Job
             (JobStatus.Pending, JobStatus.Running) => true,
             (JobStatus.Running, JobStatus.Completed) => true,
             (JobStatus.Running, JobStatus.Failed) => true,
+            (JobStatus.Running, JobStatus.Pending) when CanRetry => true,
             (JobStatus.Failed, JobStatus.Pending) when CanRetry => true,
             _ => false,
         };
