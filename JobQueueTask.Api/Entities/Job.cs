@@ -38,11 +38,6 @@ public sealed class Job
         CompletedAt = DateTimeOffset.UtcNow;
     }
 
-    public void AddResult(string result)
-    {
-        Result = result;
-    }
-
     public void MarkFailed(string message)
     {
         TransitionJobStatus(JobStatus.Failed);
@@ -50,7 +45,16 @@ public sealed class Job
         CompletedAt = DateTimeOffset.UtcNow;
     }
 
-    public void MarkPending() => TransitionJobStatus(JobStatus.Pending);
+    public void RequeueAsPending()
+    {
+        if (!CanRetry)
+        {
+            MarkFailed("No more retries");
+            return;
+        }
+        IncrementRetryCount();
+        TransitionJobStatus(JobStatus.Pending);
+    }
 
     public void Cancel()
     {
@@ -58,7 +62,7 @@ public sealed class Job
         ErrorMessage = "cancelled";
     }
 
-    public void IncrementRetryCount() => RetryCount++;
+    private void IncrementRetryCount() => RetryCount++;
 
     private void TransitionJobStatus(JobStatus newStatus)
     {
