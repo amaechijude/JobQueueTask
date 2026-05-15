@@ -1,3 +1,5 @@
+using JobQueue.Api;
+using JobQueue.Api.BackgroundWorkers;
 using JobQueueTask.Api.Entities;
 using JobQueueTask.Api.JobHandler;
 using JobQueueTask.Api.Redis;
@@ -27,6 +29,13 @@ builder.Services.AddKeyedSingleton<IJobHandler, ExportCsvHandler>("export_csv");
 builder.Services.AddKeyedSingleton<IJobHandler, SendReportHandler>("send_report");
 
 builder.Services.AddHostedService<JobProcessingWorker>();
+builder.Services.AddHostedService<OrphanRecovery>();
+
+builder
+    .Services.Configure<JobQueueOptions>(builder.Configuration.GetSection(JobQueueOptions.Key))
+    .AddOptions<JobQueueOptions>()
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 //
 
