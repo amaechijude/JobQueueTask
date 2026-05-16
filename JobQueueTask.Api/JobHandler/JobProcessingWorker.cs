@@ -93,6 +93,11 @@ public sealed class JobProcessingWorker(
                 );
             throw;
         }
+        catch (InvalidOperationException)
+        {
+            logger.LogError("Unable to resolve job handler with type {type}", job.Type);
+            job.MarkFailed("Unable to resolve job handler");
+        }
         catch (Exception ex)
         {
             logger.LogError(

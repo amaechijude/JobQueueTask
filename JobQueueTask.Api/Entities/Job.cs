@@ -40,7 +40,7 @@ public sealed class Job
         CompletedAt = DateTimeOffset.UtcNow;
     }
 
-    private void MarkFailed(string message)
+    public void MarkFailed(string message)
     {
         TransitionJobStatus(JobStatus.Failed);
         ErrorMessage = message;
