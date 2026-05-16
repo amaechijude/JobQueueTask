@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace JobQueueTask.Api.Migrations
 {
     [DbContext(typeof(JobDbContext))]
-    [Migration("20260516141611_Init")]
+    [Migration("20260516151603_Init")]
     partial class Init
     {
         /// <inheritdoc />
