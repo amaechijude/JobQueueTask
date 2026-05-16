@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace JobQueueTask.Api;
 
-public sealed class CustomExceptionHanler(IProblemDetailsService problemDetailsService)
+public sealed class CustomExceptionHandler(IProblemDetailsService problemDetailsService)
     : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(

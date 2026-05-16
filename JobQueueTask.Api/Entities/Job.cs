@@ -15,7 +15,8 @@ public sealed class Job
     public uint RowVersion { get; private set; }
     public int RetryCount { get; private set; } = 0;
     public int MaxRetries { get; private init; } = 3;
-    public bool CanRetry => RetryCount < MaxRetries;
+
+    private bool IsRetryExhausted => RetryCount > MaxRetries;
 
     public static Job Create(string type, int maxRetries, string payload) =>
         new()
@@ -55,9 +56,10 @@ public sealed class Job
 
     public void ResolveFailedJob()
     {
-        if (!CanRetry)
+        if (IsRetryExhausted)
         {
-            MarkFailed("Max retries reached.");
+            ErrorMessage = "Max retries reached.";
+            Status = JobStatus.Failed;
             return;
         }
         IncrementRetryCount();
@@ -73,8 +75,8 @@ public sealed class Job
             (JobStatus.Pending, JobStatus.Running) => true,
             (JobStatus.Running, JobStatus.Completed) => true,
             (JobStatus.Running, JobStatus.Failed) => true,
-            (JobStatus.Running, JobStatus.Pending) when CanRetry => true,
-            (JobStatus.Failed, JobStatus.Pending) when CanRetry => true,
+            (JobStatus.Running, JobStatus.Pending) when !IsRetryExhausted => true,
+            (JobStatus.Failed, JobStatus.Pending) when !IsRetryExhausted => true,
             _ => false,
         };
 

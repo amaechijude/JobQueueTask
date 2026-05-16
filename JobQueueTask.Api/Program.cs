@@ -48,7 +48,7 @@ builder
 //
 builder.Services.AddValidation();
 builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<CustomExceptionHanler>();
+builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

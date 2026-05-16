@@ -46,4 +46,67 @@ public sealed class JobServiceTests
         // cant transtion to complete from pending
         Assert.Throws<InvalidJobTransitionException>(() => job.Complete("Success"));
     }
+
+    [Fact]
+    public void RetryLogic_FailedJobWithRetriesRemaining_ShouldRequeueAsPending()
+    {
+        // Arrange
+        var payload = new Payload("admin@email.com", "r123");
+        CreateJobRequest request = new(JobType.ExportCsv, payload);
+
+        var job = Job.Create(
+            request.Type.ToString(),
+            maxRetries: 3,
+            PayloadSerializer.Serialize(request.Payload)
+        );
+
+        // Act - transition to Running then Failed
+        job.StartRunning();
+        job.MarkFailed("Processing error");
+
+        // Assert - job is now Failed
+        Assert.Equal(JobStatus.Failed, job.Status);
+        Assert.Equal("Processing error", job.ErrorMessage);
+        Assert.Equal(0, job.RetryCount); // No retries yet
+
+        // Act - resolve the failed job
+        job.ResolveFailedJob();
+
+        // Assert - job should be back to Pending and retryCount incremented
+        Assert.Equal(JobStatus.Pending, job.Status);
+        Assert.Equal(1, job.RetryCount);
+    }
+
+    [Fact]
+    public void RetryLogic_FailedJobWithExhaustedRetries_ShouldMarkFailed()
+    {
+        // Arrange
+        var payload = new Payload("admin@email.com", "r123");
+        CreateJobRequest request = new(JobType.ExportCsv, payload);
+
+        var job = Job.Create(
+            request.Type.ToString(),
+            maxRetries: 3,
+            PayloadSerializer.Serialize(request.Payload)
+        );
+
+        // Act - fail the job and exhaust retries
+        job.StartRunning();
+        job.MarkFailed("First attempt failed");
+        job.ResolveFailedJob(); // RetryCount becomes 1
+
+        job.StartRunning();
+        job.MarkFailed("Second attempt failed");
+        job.ResolveFailedJob(); // RetryCount becomes 2
+
+        job.StartRunning();
+        job.MarkFailed("Third attempt failed");
+        job.ResolveFailedJob(); // RetryCount becomes 3
+
+        // Assert - no more retries available
+        Assert.Equal(3, job.RetryCount);
+
+        //try to resolve one more time when retries exhausted should throw
+        Assert.Throws<InvalidJobTransitionException>(() => job.ResolveFailedJob());
+    }
 }
