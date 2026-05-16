@@ -47,7 +47,14 @@ builder
 
 //
 builder.Services.AddValidation();
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Instance =
+            $"{context.HttpContext.Request.Method} {context.HttpContext.Request.Path}";
+    };
+});
 builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -85,23 +92,5 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapPost(
-    "/pend",
-    async (JobDbContext context, IJobQueue jobQueue, CancellationToken ct) =>
-    {
-        var ids = await context
-            .Jobs.AsNoTracking()
-            .Where(j =>
-                j.Status == JobStatus.Pending && j.CreatedAt < DateTimeOffset.UtcNow.AddMinutes(-10)
-            )
-            .OrderBy(j => j.Id)
-            .Take(50)
-            .Select(s => s.Id)
-            .ToListAsync(ct);
-
-        await jobQueue.EnqueueAsync(ids, ct);
-        return Results.Ok(new { Messsage = "Enqueued", Number = ids.Count });
-    }
-);
 app.Run();
 ;
