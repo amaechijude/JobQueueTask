@@ -14,15 +14,14 @@ public sealed class ExportCsvHandler : IJobHandler
         return result is null ? string.Empty : PayloadSerializer.Serialize(result);
     }
 
-    private static async Task<ExportCsvResponse?> Dowork(CancellationToken ct)
+    private static async Task<ExportCsvResponse> Dowork(CancellationToken ct)
     {
         // Simulate work duration
         await Task.Delay(1000, ct);
-        int random = Random.Shared.Next(20);
+        // int random = Random.Shared.Next(20);
 
-        return random % 2 == 0 // simulate chances of failure
-            ? new ExportCsvResponse($"https://fake-storage/exports/{Guid.NewGuid()}.csv", 1500)
-            : null;
+        // //  random % 2 == 0 // simulate chances of failure
+        return new ExportCsvResponse($"https://fake-storage/exports/{Guid.NewGuid()}.csv", 1500);
     }
 }
 

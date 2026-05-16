@@ -9,6 +9,14 @@ A robust, asynchronous background job queuing and processing API built with ASP.
 - **Redis** (Installed locally or via Docker)
 - Docker (Optional, but recommended for easily running dependencies)
 
+## Clone the Repository
+
+To get started, clone the repository to your local machine using the following command:
+
+```bash
+git clone https://github.com/amaechijude/JobQueueTask.git
+```
+
 ## Environment Setup
 
 You can run PostgreSQL, Redis, and the API either directly on your machine or by using Docker. 
