@@ -77,7 +77,8 @@ public sealed class JobProcessingWorker(
             if (string.IsNullOrWhiteSpace(result)) // fail
             {
                 job.ResolveFailedJob();
-                await jobQueue.EnqueueAsync(job.Id, ct);
+                if (job.Status == JobStatus.Pending)
+                    await jobQueue.EnqueueAsync(job.Id, ct);
             }
             else
             {
@@ -101,12 +102,15 @@ public sealed class JobProcessingWorker(
         catch (Exception ex)
         {
             logger.LogError(
-                "An error ocuured while processing job with id {id}. {message}",
+                "An error occurred while processing job with id {id}. {message}",
                 job.Id,
                 ex.Message
             );
             job.ResolveFailedJob();
-            await jobQueue.EnqueueAsync(job.Id, ct);
+            if (job.Status == JobStatus.Pending)
+            {
+                await jobQueue.EnqueueAsync(job.Id, ct);
+            }
         }
         finally
         {

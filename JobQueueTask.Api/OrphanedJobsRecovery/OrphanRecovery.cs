@@ -29,11 +29,11 @@ public sealed class OrphanRecovery(
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("Orphan recovery is shutting dowm");
+            logger.LogInformation("Orphan recovery is shutting down");
         }
         catch (Exception ex)
         {
-            logger.LogError("Exception occured in Orphan recovery loop {message}", ex.Message);
+            logger.LogError("Exception occurred in Orphan recovery loop {message}", ex.Message);
 
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         }
@@ -73,7 +73,10 @@ public sealed class OrphanRecovery(
             if (job.Status == JobStatus.Pending)
                 IdsToEnque.Add(job.Id);
         }
-        await jobQueue.EnqueueAsync(IdsToEnque, cancellationToken);
+        if (IdsToEnque.Count > 0)
+        {
+            await jobQueue.EnqueueAsync(IdsToEnque, cancellationToken);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

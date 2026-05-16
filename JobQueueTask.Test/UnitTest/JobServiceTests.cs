@@ -10,24 +10,6 @@ namespace JobQueueTask.Test.UnitTest;
 
 public sealed class JobServiceTests
 {
-    private readonly IJobService _sut;
-    private readonly JobDbContext _dbContext;
-    private readonly IJobQueue jobQueue;
-
-    public JobServiceTests()
-    {
-        var logger = Substitute.For<ILogger<JobService>>();
-
-        jobQueue = Substitute.For<IJobQueue>();
-
-        var dbOptions = new DbContextOptionsBuilder<JobDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _dbContext = new JobDbContext(dbOptions);
-
-        _sut = new JobService(_dbContext, jobQueue, logger);
-    }
-
     [Fact]
     public void InvalidJobTransition_ShouldThrow()
     {
@@ -90,23 +72,22 @@ public sealed class JobServiceTests
             PayloadSerializer.Serialize(request.Payload)
         );
 
-        // Act - fail the job and exhaust retries
-        job.StartRunning();
-        job.MarkFailed("First attempt failed");
-        job.ResolveFailedJob(); // RetryCount becomes 1
+        // Act - fail the job up to max retries
+        for (int i = 0; i < 3; i++)
+        {
+            job.StartRunning();
+            job.MarkFailed($"Attempt {i + 1} failed");
+            job.ResolveFailedJob();
+        }
 
+        // Exhausted attempt
         job.StartRunning();
-        job.MarkFailed("Second attempt failed");
-        job.ResolveFailedJob(); // RetryCount becomes 2
+        job.MarkFailed("Fourth attempt failed");
+        job.ResolveFailedJob();
 
-        job.StartRunning();
-        job.MarkFailed("Third attempt failed");
-        job.ResolveFailedJob(); // RetryCount becomes 3
-
-        // Assert - no more retries available
+        // Assert - job is permanently failed
         Assert.Equal(3, job.RetryCount);
-
-        //try to resolve one more time when retries exhausted should throw
-        Assert.Throws<InvalidJobTransitionException>(() => job.ResolveFailedJob());
+        Assert.Equal(JobStatus.Failed, job.Status);
+        Assert.Equal("Max retries reached.", job.ErrorMessage);
     }
 }

@@ -26,7 +26,7 @@ public sealed class ApiResponse<T>
     // success
     public static ApiResponse<T> Success(T data) => new(data);
 
-    public static ApiResponse<T> Nocontent() => new();
+    public static ApiResponse<T> NoContent() => new();
 
     // failures
     private static ApiResponse<T> Failure(ApiError error) => new(error);

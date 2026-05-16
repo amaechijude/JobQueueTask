@@ -12,14 +12,18 @@ A robust, asynchronous background job queuing and processing API built with ASP.
 ## Environment Setup
 
 You can run PostgreSQL and Redis either directly on your machine or by using Docker. 
+You can run PostgreSQL, Redis, and the API either directly on your machine or by using Docker. 
 
 ### Option A: Using Docker (Recommended)
 
 If you have Docker installed, you can quickly spin up instances for both dependencies.
+If you have Docker installed, you can quickly spin up the entire application stack or just the dependencies using Docker Compose.
 
 **1. Start a PostgreSQL container:**
+**1. Start the API, PostgreSQL, and Redis together:**
 ```bash
 docker run --name jobqueue-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_DB=jobqueue -p 5432:5432 -d postgres
+docker-compose up -d --build
 ```
 
 **2. Start a Redis container:**
