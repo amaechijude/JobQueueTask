@@ -11,8 +11,6 @@ public sealed class Job
     public DateTimeOffset CreatedAt { get; private init; }
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
-
-    public uint RowVersion { get; private set; }
     public int RetryCount { get; private set; } = 0;
     public int MaxRetries { get; private init; } = 3;
 

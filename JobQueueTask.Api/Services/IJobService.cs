@@ -6,7 +6,7 @@ public interface IJobService
         Guid id,
         CancellationToken cancellationToken
     );
-    Task<ApiResponse<string>> CreateJobAsync(
+    Task<ApiResponse<GetJobResponse>> CreateJobAsync(
         CreateJobRequest request,
         CancellationToken cancellationToken
     );

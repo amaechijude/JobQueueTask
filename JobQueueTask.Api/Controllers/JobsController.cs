@@ -14,7 +14,7 @@ public sealed class JobsController(IJobService jobService) : ControllerBase
     )
     {
         var response = await jobService.CreateJobAsync(request, cancellationToken);
-        return response.IsSuccess ? Created() : BadRequest(response.Error);
+        return response.IsSuccess ? Ok(response.Data) : BadRequest(response.Error);
     }
 
     [HttpGet("{jobId:guid}")]

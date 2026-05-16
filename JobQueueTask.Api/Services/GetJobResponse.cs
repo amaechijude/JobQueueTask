@@ -18,7 +18,7 @@ public sealed record GetJobResponse(
     Guid Id,
     string Type,
     JobStatus Status,
-    JobResult? Result,
+    object? Result,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
     int RetryCount

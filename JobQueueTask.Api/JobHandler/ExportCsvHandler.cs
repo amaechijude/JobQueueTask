@@ -1,27 +1,63 @@
+using JobQueueTask.Api.Entities;
+using JobQueueTask.Api.Redis;
+
 namespace JobQueueTask.Api.JobHandler;
 
-public sealed class ExportCsvHandler : IJobHandler
+public sealed class ExportCsvHandler(
+    IJobQueue jobQueue,
+    JobDbContext dbcontext,
+    ILogger<ExportCsvHandler> logger
+) : IJobHandler
 {
-    public async Task<string> ExecuteAsync(string payload, CancellationToken ct)
+    public async Task<string> ExecuteAsync(Guid jobId, CancellationToken ct)
     {
-        var request = PayloadSerializer.Deserialize<ExportCsvRequest>(payload);
+        var job = await dbcontext.Jobs.FindAsync([jobId], ct);
 
-        // Simulate work duration
-        await Task.Delay(1000, ct);
+        if (job is null || job.Status == JobStatus.Pending)
+            return string.Empty;
 
-        var result = await Dowork(ct);
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation(
+                "Beging processing of job {jobId} with jobtype {jobtype}",
+                jobId,
+                job.Type
+            );
 
-        return result is null ? string.Empty : PayloadSerializer.Serialize(result);
+        // Simulate payload deserialization
+        var request = PayloadSerializer.Deserialize<ExportCsvRequest>(job.Payload);
+        if (request is null)
+        {
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("Invalid or empty payload on job {jobid}", job.Id);
+            return string.Empty;
+        }
+
+        var (success, result) = await DoWorkAsync(request, ct);
+        if (success)
+        {
+            job.Complete(result);
+        }
+        else
+        {
+            job.ResolveFailedJob();
+            await jobQueue.EnqueueAsync(job.Id, ct);
+        }
+        await dbcontext.SaveChangesAsync(ct);
+
+        return string.Empty;
     }
 
-    private static async Task<ExportCsvResponse> Dowork(CancellationToken ct)
+    private static async Task<(bool success, string result)> DoWorkAsync(
+        ExportCsvRequest request,
+        CancellationToken ct
+    )
     {
         // Simulate work duration
         await Task.Delay(1000, ct);
-        // int random = Random.Shared.Next(20);
 
-        // //  random % 2 == 0 // simulate chances of failure
-        return new ExportCsvResponse($"https://fake-storage/exports/{Guid.NewGuid()}.csv", 1500);
+        bool success = Random.Shared.Next(0, 6) != 5;
+
+        return (success, PayloadSerializer.Serialize(request));
     }
 }
 

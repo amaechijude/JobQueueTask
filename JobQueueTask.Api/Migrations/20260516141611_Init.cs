@@ -19,7 +19,7 @@ namespace JobQueueTask.Api.Migrations
                     Type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Payload = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
-                    Result = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    Result = table.Column<string>(type: "text", nullable: true),
                     ErrorMessage = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     StartedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),

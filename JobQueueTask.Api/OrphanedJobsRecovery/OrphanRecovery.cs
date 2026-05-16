@@ -51,12 +51,14 @@ public sealed class OrphanRecovery(
             .Jobs.Where(e =>
                 (e.StartedAt ?? DateTimeOffset.MinValue) < cutoff && e.Status == JobStatus.Running
             )
-            .TagWithCallSite()
             .OrderBy(j => j.Id)
             .Take(50)
             .ToListAsync(cancellationToken);
 
         var count = orphanedJobs.Count;
+
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation("found {count} orphaned jobs to recover", count);
 
         if (count == 0)
             return;

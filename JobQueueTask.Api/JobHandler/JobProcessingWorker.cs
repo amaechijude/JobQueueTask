@@ -18,7 +18,7 @@ public sealed class JobProcessingWorker(
         {
             try
             {
-                await ProcessNextJobAsync(stoppingToken);
+                await DispatchJobAsync(stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -33,7 +33,7 @@ public sealed class JobProcessingWorker(
         }
     }
 
-    private async Task ProcessNextJobAsync(CancellationToken ct)
+    private async Task DispatchJobAsync(CancellationToken ct)
     {
         // Create a new scope for each processing attempt
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -56,34 +56,25 @@ public sealed class JobProcessingWorker(
             logger.LogWarning("Job {JobId} popped from queue but not found in DB.", jobId);
             return;
         }
+
         if (job.Status != JobStatus.Pending)
         {
-            logger.LogWarning("job already running or completed.");
+            logger.LogWarning("Job {JobId} popped from queue", job.Id);
             return;
         }
 
         // transition job to running
         job.StartRunning();
-
+        await dbContext.SaveChangesAsync(ct);
         try
         {
-            // 3. Dynamically resolve the correct handler using Keyed Services
+            logger.LogWarning("transitions job to running. {id}", job.Id);
+
+            // Dynamically resolve the correct handler using Keyed Services
             var handler = scope.ServiceProvider.GetRequiredKeyedService<IJobHandler>(job.Type);
 
-            // 4. Execute the specific job logic
-            var result = await handler.ExecuteAsync(job.Payload, ct);
-
-            // 5. Update Job status
-            if (string.IsNullOrWhiteSpace(result)) // fail
-            {
-                job.ResolveFailedJob();
-                if (job.Status == JobStatus.Pending)
-                    await jobQueue.EnqueueAsync(job.Id, ct);
-            }
-            else
-            {
-                job.Complete(result);
-            }
+            // Execute the specific job logic
+            await handler.ExecuteAsync(job.Id, ct);
         }
         catch (OperationCanceledException)
         {
@@ -97,24 +88,7 @@ public sealed class JobProcessingWorker(
         catch (InvalidOperationException)
         {
             logger.LogError("Unable to resolve job handler with type {type}", job.Type);
-            job.MarkFailed("Unable to resolve job handler");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                "An error occurred while processing job with id {id}. {message}",
-                job.Id,
-                ex.Message
-            );
-            job.ResolveFailedJob();
-            if (job.Status == JobStatus.Pending)
-            {
-                await jobQueue.EnqueueAsync(job.Id, ct);
-            }
-        }
-        finally
-        {
-            await dbContext.SaveChangesAsync(ct);
+            throw;
         }
     }
 }

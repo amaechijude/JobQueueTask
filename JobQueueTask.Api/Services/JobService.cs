@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using JobQueueTask.Api.Entities;
 using JobQueueTask.Api.JobHandler;
 using JobQueueTask.Api.Redis;
@@ -9,7 +10,7 @@ namespace JobQueueTask.Api.Services;
 public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger<JobService> logger)
     : IJobService
 {
-    public async Task<ApiResponse<string>> CreateJobAsync(
+    public async Task<ApiResponse<GetJobResponse>> CreateJobAsync(
         CreateJobRequest request,
         CancellationToken cancellationToken
     )
@@ -47,7 +48,19 @@ public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger
                 ex.Message
             );
         }
-        return ApiResponse<string>.Success("Job is create");
+
+        var s = newJob;
+        return ApiResponse<GetJobResponse>.Success(
+            new GetJobResponse(
+                s.Id,
+                s.Type,
+                s.Status,
+                GetJobResult(s.Result, s.Type),
+                s.CreatedAt,
+                s.CompletedAt,
+                s.RetryCount
+            )
+        );
     }
 
     public async Task<ApiResponse<ListJobsResponse>> ListJobsAsync(
@@ -67,15 +80,7 @@ public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger
             .OrderBy(q => q.Id)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize + 1)
-            .Select(s => new GetJobResponse(
-                s.Id,
-                s.Type,
-                s.Status,
-                GetJobResult(s.Result),
-                s.CreatedAt,
-                s.CompletedAt,
-                s.RetryCount
-            ))
+            .Select(HandleJobProjection)
             .ToListAsync(cancellationToken);
 
         var count = jobs.Count;
@@ -91,15 +96,7 @@ public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger
         var job = await context
             .Jobs.AsNoTracking()
             .Where(j => j.Id == id)
-            .Select(s => new GetJobResponse(
-                s.Id,
-                s.Type,
-                s.Status,
-                GetJobResult(s.Result),
-                s.CreatedAt,
-                s.CompletedAt,
-                s.RetryCount
-            ))
+            .Select(HandleJobProjection)
             .FirstOrDefaultAsync(ct);
 
         if (job is null)
@@ -133,14 +130,28 @@ public sealed class JobService(JobDbContext context, IJobQueue jobQueue, ILogger
         return ApiResponse<ListJobStatistics>.Success(new ListJobStatistics(jobs));
     }
 
-    private static JobResult? GetJobResult(string? result)
+    private static readonly Expression<Func<Job, GetJobResponse>> HandleJobProjection =
+        s => new GetJobResponse(
+            s.Id,
+            s.Type,
+            s.Status,
+            GetJobResult(s.Result, s.Type),
+            s.CreatedAt,
+            s.CompletedAt,
+            s.RetryCount
+        );
+
+    private static object? GetJobResult(string? result, string type)
     {
         if (string.IsNullOrWhiteSpace(result))
             return null;
+
         try
         {
-            var response = PayloadSerializer.Deserialize<JobResult>(result);
-            return response;
+            var ser = type.Equals(JobType.ExportCsv.ToString(), StringComparison.OrdinalIgnoreCase);
+            if (ser)
+                return PayloadSerializer.Deserialize<ExportCsvResponse>(result);
+            return PayloadSerializer.Deserialize<SendReportHandler>(result);
         }
         catch (Exception)
         {

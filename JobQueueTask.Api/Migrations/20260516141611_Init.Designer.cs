@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace JobQueueTask.Api.Migrations
 {
     [DbContext(typeof(JobDbContext))]
-    [Migration("20260515130143_Init")]
+    [Migration("20260516141611_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -49,8 +49,7 @@ namespace JobQueueTask.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Result")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("integer");

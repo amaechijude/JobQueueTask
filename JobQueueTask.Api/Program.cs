@@ -33,8 +33,8 @@ builder.Services.AddSingleton<IJobQueue, RedisJobQueue>();
 builder.Services.AddScoped<IJobService, JobService>();
 
 // handlers
-builder.Services.AddKeyedSingleton<IJobHandler, ExportCsvHandler>(JobType.ExportCsv.ToString());
-builder.Services.AddKeyedSingleton<IJobHandler, SendReportHandler>(JobType.SendReport.ToString());
+builder.Services.AddKeyedScoped<IJobHandler, ExportCsvHandler>(JobType.ExportCsv.ToString());
+builder.Services.AddKeyedScoped<IJobHandler, SendReportHandler>(JobType.SendReport.ToString());
 
 builder.Services.AddHostedService<JobProcessingWorker>();
 builder.Services.AddHostedService<OrphanRecovery>();
@@ -85,23 +85,23 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet(
-    "/test",
-    async (JobDbContext dbContext, CancellationToken cancellationToken) =>
+app.MapPost(
+    "/pend",
+    async (JobDbContext context, IJobQueue jobQueue, CancellationToken ct) =>
     {
-        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-5);
-        var orphanedJobs = await dbContext
-            .Jobs.Where(e =>
-                (e.StartedAt != null && e.StartedAt < cutoff)
-                || (e.StartedAt == null && e.CreatedAt < cutoff) // Catches stuck, unstarted jobs safely
+        var ids = await context
+            .Jobs.AsNoTracking()
+            .Where(j =>
+                j.Status == JobStatus.Pending && j.CreatedAt < DateTimeOffset.UtcNow.AddMinutes(-10)
             )
-            .TagWithCallSite()
             .OrderBy(j => j.Id)
             .Take(50)
-            .ToListAsync(cancellationToken);
+            .Select(s => s.Id)
+            .ToListAsync(ct);
 
-        return Results.Ok(orphanedJobs);
+        await jobQueue.EnqueueAsync(ids, ct);
+        return Results.Ok(new { Messsage = "Enqueued", Number = ids.Count });
     }
 );
-
 app.Run();
+;
